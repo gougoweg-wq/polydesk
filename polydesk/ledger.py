@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS ticks (
   bid_up REAL, ask_up REAL, bid_down REAL, ask_down REAL, last_up REAL
 );
 CREATE INDEX IF NOT EXISTS ix_ticks_slug ON ticks(slug);
+CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
 """
 
 
@@ -33,6 +34,19 @@ class Ledger:
         self.db = sqlite3.connect(str(p), check_same_thread=False)
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript(SCHEMA)
+
+    def apply_epoch(self, epoch: str) -> bool:
+        """Новая версия правил — чистый бумажный журнал (старый архивируется в отдельной ветке git)."""
+        if not epoch:
+            return False
+        r = self.db.execute("SELECT v FROM meta WHERE k='epoch'").fetchone()
+        if r and r[0] == epoch:
+            return False
+        for t in ("markets", "fills", "equity", "events", "ticks"):
+            self.db.execute(f"DELETE FROM {t}")
+        self.db.execute("INSERT OR REPLACE INTO meta VALUES('epoch', ?)", (epoch,))
+        self.db.commit()
+        return True
 
     def event(self, level: str, msg: str) -> None:
         self.db.execute("INSERT INTO events(ts,level,msg) VALUES(?,?,?)", (time.time(), level, msg))

@@ -1,6 +1,7 @@
 """The loop: feeds → market lifecycle → fair value → strategy → execution → ledger."""
 from __future__ import annotations
 import asyncio
+import os
 import logging
 import time
 from dataclasses import dataclass, field
@@ -81,6 +82,8 @@ class Engine:
         self.delayed = DelayedTaker(self.exchange, settings.taker_latency)
         self.pending: dict[str, float] = {}           # slug -> когда спрашивали исход последний раз
         self.pending_markets: dict[str, Market] = {}
+        if settings.mode == "paper" and self.ledger.apply_epoch(os.getenv("LEDGER_EPOCH", "")):
+            self.ledger.event("epoch", f"new ledger epoch {os.getenv('LEDGER_EPOCH')}: fresh paper account")
         if settings.mode == "paper":
             # перезапуск восстанавливает и реализованный результат, и открытые позиции
             fixed = rebuild_from_fills(self.ledger)

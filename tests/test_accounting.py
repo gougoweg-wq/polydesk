@@ -64,3 +64,15 @@ def test_rebuild_rows_from_fills(tmp_path):
     row = lg.db.execute("select up, down, spent, fees, settled_at from markets where slug=?", (m.slug,)).fetchone()
     assert row == (100, 50, 70.0, 0.5, None)
     assert eng.rebuild_from_fills(lg) == []   # повторный запуск ничего не меняет
+
+
+def test_ledger_epoch_starts_fresh_once(tmp_path):
+    lg = Ledger(str(tmp_path / "l.db"))
+    m = mk(5000)
+    lg.upsert_market(m, Position(m.slug, up=10, spent=5.0, fees=0, settled=True, payout=10))
+    assert lg.stats()["markets_settled"] == 1
+    assert lg.apply_epoch("v3.1") is True                  # новая эпоха — журнал с нуля
+    assert lg.stats()["markets_settled"] == 0
+    lg.upsert_market(m, Position(m.slug, up=10, spent=5.0, fees=0, settled=True, payout=10))
+    assert lg.apply_epoch("v3.1") is False                 # та же эпоха — ничего не трогаем
+    assert lg.stats()["markets_settled"] == 1

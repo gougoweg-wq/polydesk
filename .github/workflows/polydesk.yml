@@ -29,6 +29,7 @@ jobs:
       - name: Run paper engine (5.5 h, saves every 15 min)
         env:
           MODE: paper
+          LEDGER_EPOCH: "v3.1"      # смена эпохи = чистый бумажный счёт для новой версии правил
           PYTHONUNBUFFERED: "1"
         run: |
           (while sleep 900; do sh scripts/state_sync.sh push || true; done) &
