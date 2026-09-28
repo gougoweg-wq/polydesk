@@ -46,6 +46,8 @@ class Settings:
     market_fraction: float = _f("MARKET_FRACTION", 0.05)          # и не больше этой доли капитала на рынок
     # v3: покупки по рынку только в коридоре цены; дешевле 0.30 модель ошибалась (−68% на $),
     # выше 0.95 — нечего заработать. Проверено на отложенной половине данных: +14.5% на $.
+    # бумага честнее: заявка доходит через секунду и исполняется по свежему стакану (решение совета 28.09)
+    taker_latency: float = _f("TAKER_LATENCY", 1.0)
     taker_min_price: float = _f("TAKER_MIN_PRICE", 0.30)
     taker_max_price: float = _f("TAKER_MAX_PRICE", 0.95)
     starting_cash: float = _f("STARTING_CASH", 1000)

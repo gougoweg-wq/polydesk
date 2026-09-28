@@ -12,6 +12,7 @@ from .markets import Market, fetch_market, refresh, slot_ts, slug_for
 from .model import FairValue, Fair
 from .strategy import Strategy, Intent
 from .execution.paper import PaperExchange, Position
+from .execution.latency import DelayedTaker
 from .ledger import Ledger
 
 log = logging.getLogger("engine")
@@ -77,6 +78,7 @@ class Engine:
         self.strategy = Strategy()
         self.ledger = Ledger()
         self.exchange = self._make_exchange()
+        self.delayed = DelayedTaker(self.exchange, settings.taker_latency)
         self.pending: dict[str, float] = {}           # slug -> когда спрашивали исход последний раз
         self.pending_markets: dict[str, Market] = {}
         if settings.mode == "paper":
@@ -182,6 +184,11 @@ class Engine:
         bd = self.books.books.get(m.down_token)
         for it in intents:
             if it.kind == "take":
+                if settings.mode == "paper" and settings.taker_latency > 0:
+                    if not self.delayed.busy(m.slug, it.side):
+                        token = m.up_token if it.side == "Up" else m.down_token
+                        asyncio.create_task(self._take_later(m, it, token))
+                    continue
                 book = bu if it.side == "Up" else bd
                 f = self.exchange.take(m, it.side, book, it.shares, it.price, it.reason)
                 if f:
@@ -190,6 +197,12 @@ class Engine:
                 self.exchange.set_quote(m, it.side, it.price, it.shares)
             elif it.kind == "cancel_all":
                 self.exchange.cancel_all(m.slug)
+
+    async def _take_later(self, m: Market, it, token: str) -> None:
+        f = await self.delayed.take(m, it.side, lambda: self.books.books.get(token), it.shares, it.price, it.reason)
+        if f:
+            log.info("TAKE %s %s %.0f@%.3f %s (after %.1fs)", m.slug, it.side, f.shares, f.price, it.reason,
+                     settings.taker_latency)
 
     async def _tick(self) -> None:
         now = time.time()
