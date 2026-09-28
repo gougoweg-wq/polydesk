@@ -50,7 +50,7 @@ class Strategy:
             p_fav = fair.p_up if fav == "Up" else 1 - fair.p_up
             book = book_up if fav == "Up" else book_down
             ask = book.best_ask()
-            if p_fav >= s.taker_min_p and ask:
+            if p_fav >= s.taker_min_p and ask and s.taker_min_price <= ask[0] < s.taker_max_price:
                 price, size = ask
                 edge = p_fav - price - taker_fee(1, price, market.fee_rate)
                 if edge >= s.taker_min_edge:

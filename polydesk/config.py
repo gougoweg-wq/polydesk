@@ -34,7 +34,8 @@ class Settings:
     taker_start_before_end: int = _i("TAKER_START_BEFORE_END", 150)
 
     # maker layer: rest bids on both sides below fair so a complete set costs < $1
-    maker_enabled: bool = os.getenv("MAKER_ENABLED", "1") == "1"
+    # v3: лимитные заявки выключены — на данных они проигрывали (неблагоприятный отбор, −6% на $)
+    maker_enabled: bool = os.getenv("MAKER_ENABLED", "0") == "1"
     maker_margin: float = _f("MAKER_MARGIN", 0.03)          # distance below fair for each bid
     maker_shares: float = _f("MAKER_SHARES", 50)
     maker_stop_before_end: int = _i("MAKER_STOP_BEFORE_END", 20)
@@ -43,6 +44,10 @@ class Settings:
 
     max_market_notional: float = _f("MAX_MARKET_NOTIONAL", 150)  # $ per market, both layers
     market_fraction: float = _f("MARKET_FRACTION", 0.05)          # и не больше этой доли капитала на рынок
+    # v3: покупки по рынку только в коридоре цены; дешевле 0.30 модель ошибалась (−68% на $),
+    # выше 0.95 — нечего заработать. Проверено на отложенной половине данных: +14.5% на $.
+    taker_min_price: float = _f("TAKER_MIN_PRICE", 0.30)
+    taker_max_price: float = _f("TAKER_MAX_PRICE", 0.95)
     starting_cash: float = _f("STARTING_CASH", 1000)
 
     tick_seconds: float = _f("TICK_SECONDS", 0.25)
