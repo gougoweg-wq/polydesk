@@ -1,0 +1,6 @@
+aiohttp>=3.10
+websockets>=13
+fastapi>=0.110
+uvicorn>=0.30
+python-dotenv>=1.0
+pytest>=8

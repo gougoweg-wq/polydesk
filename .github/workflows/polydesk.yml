@@ -1,0 +1,43 @@
+name: polydesk
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # реаниматор эстафеты
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: polydesk
+  cancel-in-progress: false
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Pull state
+        run: sh scripts/state_sync.sh pull
+      - name: Run paper engine (5.5 h, saves every 15 min)
+        env:
+          MODE: paper
+          PYTHONUNBUFFERED: "1"
+        run: |
+          (while sleep 900; do sh scripts/state_sync.sh push || true; done) &
+          timeout 19800 python -m polydesk run || [ $? -eq 124 ]
+      - name: Push state
+        if: always()
+        run: sh scripts/state_sync.sh push || true
+      - name: Pass the baton
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run polydesk --ref main
